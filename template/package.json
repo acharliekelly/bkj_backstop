@@ -1,0 +1,14 @@
+{
+  "name": "<name>",
+  "version": "1.0.0",
+  "description": "Visual regression tests for <domain>",
+  "main": "index.js",
+  "scripts": {
+    "test": "backstop test"
+  },
+  "author": "bkj-backstop-generator-plugin",
+  "license": "ISC",
+  "dependencies": {
+    "backstopjs": "^6.3.25"
+  }
+}
