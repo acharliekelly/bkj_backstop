@@ -1,18 +1,18 @@
 <?php
 /*
-Plugin Name: BKJ Backstop Generator
+Plugin Name: BKJ Backstop Generator 2.0.4
 Plugin URI: http://www.bkjproductions.com/
 Description: Generates a new Backstop environment (backstop.json and package.json) for each Client Record
-Version: 2.0.3
+Version: 2.0.4
 Author: BKJ Productions, LLC
 Author URI: https://chatgpt.com/share/66f1e5b9-5918-8010-b986-5c12ddfa42bc
 Version History:
+2.0.4	Review folder creation
 2.0.1 added folder stuff
-2.0.2 revert to default backstop folder structure
-2.0.3 create client folder for each backstop
+
 */
 
-$bkj_backgen_version = '2.0.3';
+$bkj_backgen_version = '2.0.4';
 
 //https://chatgpt.com/share/66f1e5b9-5918-8010-b986-5c12ddfa42bc
 // https://chatgpt.com/share/66f1e5b9-5918-8010-b986-5c12ddfa42bc
@@ -78,8 +78,7 @@ function bkj_backgen_process_clients() {
 	$destination = ABSPATH . trim($destination, '/');
 	bkj_backgen_delete_old_backstop_zips(dirname($destination));
 	$delay = 10000; // 10 second delay
-    $threshold = 0.1; // 10% mismatch threshold
-	
+	$threshold = "0.3";
 	   // Check if the destination folder exists, and delete it if it does
     if (file_exists($destination)) {
         bkj_backgen_recursive_delete($destination);
@@ -111,8 +110,9 @@ function bkj_backgen_process_clients() {
 	$plugin_dir = plugin_dir_path(__FILE__) . 'template';
 	$backstop_json_template = file_get_contents($plugin_dir . '/backstop.json');
 	$package_json_template = file_get_contents($plugin_dir . '/package.json');
-	$additional_urls_template =     ',' . "\n" . '{"label": "<label>", "url": "<url-goes-here>", "delay": "<delay>", "threshold": "<threshold>"}';
-
+	$additional_urls_template =     ',' . "\n" . '{"label": "<label>", "url": "<url-goes-here>", "delay": "<delay>","threshold": "<threshold>"}';
+	$folders_needed = 'bitmaps_reference,bitmaps_test,html_report'; 
+	$folders_needed = explode(',', $folders_needed);
 	$client_k = 0;
 	// Loop through each client post
 	foreach ($clients as $client) {
@@ -148,13 +148,31 @@ function bkj_backgen_process_clients() {
 			echo 'Skipping client: ' . esc_html($client_name) . ' (Empty URL list)<br>';
 			continue;
 		}
+		// make folder for client
+		$client_dir = "$destination/$simple_slug";
+		mkdir($client_dir, 0755, true);
+        $data_dir = "$client_dir/backstop_data";
+        mkdir($data_dir, 0755, true);
+        
+		echo 'Created directory for client: ' . esc_html($client_slug) . '<br>';
 
-		$client_dir = $destination . '/' . $client_slug;
+        		//$client_dir = "$destination/$simple_slug/backstop_data";
+		//mkdir($client_dir, 0755, true);
+
+		/*foreach ($folders_needed as $folder) {
+			$client_dir = "$destination/$simple_slug/backstop_data/$folder";
+			mkdir($client_dir, 0755, true);
+			echo " &nbsp;&nbsp;&nbsp; Created subdirectory for client: $folder<br>";
+		}
+		*/
+
+	/*	$client_dir = $destination . '/' . $client_slug;
 		echo 'Seeking directory for ' . esc_html($client_dir) . '<br>';
 		if (!file_exists($client_dir)) {
 			mkdir($client_dir, 0755, true);
 			echo 'Created directory for client: ' . esc_html($client_slug) . '<br>';
 		}
+*/
 
 		// Process backstop.json
 
@@ -176,30 +194,27 @@ function bkj_backgen_process_clients() {
 				$additional_url = str_replace('<url-goes-here>',$url, $additional_urls_template);
 				$additional_url = str_replace('<slug>',$simple_slug, $additional_url);
 				$additional_url = str_replace('<delay>',$delay, $additional_url);
-                $additional_url = str_replace('<threshold>', $threshold, $backstop_json);
+				$additional_url = str_replace('<threshold>', $threshold, $additional_url);
 				$additional_urls .= str_replace('<label>', "$client_slug-$url_slug", $additional_url);	
 			}
 		}
 		$backstop_json = str_replace('<additional_urls>', $additional_urls, $backstop_json);
 
-		file_put_contents("$client_dir/backstop.json", $backstop_json);
-        // file_put_contents("$client_dir/package.json", $package_json);
+		// if file is named uniquely:
+		//file_put_contents("$destination/$simple_slug/$simple_slug-backstop.json", $backstop_json);
+		file_put_contents("$destination/$simple_slug/backstop.json", $backstop_json);
 		echo "Processed backstop.json for client: " . esc_html($client_name);
 		if ($no_urls_found) {echo " <em>(Default website URL only)</em>";}
 		echo " Found $howmany_found<BR>";
 		
 
-	    $package_json = str_replace(array('<name>', '<domain>'), array($client_name, $client_slug), $package_json_template);
-		file_put_contents($client_dir . '/package.json', $package_json);
+
+		$package_json = str_replace(array('<name>', '<domain>'), array($client_name, $client_slug), $package_json_template);
+		file_put_contents("$destination/$simple_slug/package.json", $package_json);
 		echo 'Processed package.json for client: ' . esc_html($client_name) . '<br>';
 
-		// Copy remaining template files (excluding the backstop.json and package.json files)
-	//	$dest = $client_dir;
-	//	bkj_backgen_recursive_copy($plugin_dir, $dest, array('backstop.json', 'package.json'));
-
-	//	echo 'Copied template files for client: ' . esc_html($client_name) . '<br>';
 	}
-//echo "</div>";
+
     // Zip the folder once all clients have been processed
     $zip_file = $destination . '-' . date('Y-m-d-H-i-s') . '.zip';
     if (bkj_backgen_zip_folder($destination, $zip_file)) {
